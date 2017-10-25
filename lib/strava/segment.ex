@@ -62,6 +62,86 @@ defmodule Strava.Segment do
     :star_count
   ]
 
+  defmodule Summary do
+    @type t :: %__MODULE__{
+      id: number,
+      name: String.t,
+      climb_category: integer,
+      climb_category_desc: String.t,
+      avg_grade: float,
+      start_latlng: list(float),
+      end_latlng: list(float),
+      elev_difference: float,
+      distance: float,
+      points: Strava.Map.t
+    }
+
+    defstruct [
+      :id,
+      :name,
+      :climb_category,
+      :climb_category_desc,
+      :avg_grade,
+      :start_latlng,
+      :end_latlng,
+      :elev_difference,
+      :distance,
+      :points
+    ]
+  end
+
+  defmodule Leaderboard do
+    @type t :: %__MODULE__{
+      entry_count: number,
+      entries: list(Strava.Segment.LeaderboardEntry),
+      kom_type: String.t,
+      neighborhood_count: integer,
+    }
+
+    defstruct [
+      :entry_count,
+      :entries,
+      :kom_type,
+      :neighborhood_count,
+    ]
+  end
+
+  defmodule LeaderboardEntry do
+    @type t :: %__MODULE__{
+      athlete_name: String.t,
+      athlete_id: integer,
+      athlete_gender: String.t,
+      average_hr: float,
+      average_watts: float,
+      distance: float,
+      elapsed_time: integer,
+      moving_time: integer,
+      start_date: NaiveDateTime.t | String.t,
+      start_date_local: NaiveDateTime.t | String.t,
+      activity_id: integer,
+      effort_id: integer,
+      rank: integer,
+      athlete_profile: String.t
+    }
+
+    defstruct [
+      :athlete_name,
+      :athlete_id,
+      :athlete_gender,
+      :average_hr,
+      :average_watts,
+      :distance,
+      :elapsed_time,
+      :moving_time,
+      :start_date,
+      :start_date_local,
+      :activity_id,
+      :effort_id,
+      :rank,
+      :athlete_profile,
+    ]
+  end
+
   @doc """
   Retrieve details about a specific segment.
 
@@ -175,6 +255,51 @@ defmodule Strava.Segment do
     "segments/starred?#{Strava.Util.query_string(pagination)}"
     |> Strava.request(client, as: [%Strava.Segment{}])
     |> Enum.map(&Strava.Segment.parse/1)
+  end
+
+  @doc """
+  Retrieve a list of Segment Summaries given gps bounds
+
+  ## Example
+      Strava.Segment.explorer(%{bounds: "37.821362,-122.505373,38.842038,-121.46597", activity_type: "running"}))
+
+  More info: https://strava.github.io/api/v3/segments/#explore
+  """
+  @spec explorer(map, Strava.Client.t) :: list(Strava.Segment.Summary.t)
+  def explorer(filters, client \\ Strava.Client.new) do
+    params = filters
+      |> Enum.filter(fn {_, v} -> v != nil end)
+      |> Enum.into(filters)
+      |> URI.encode_query
+
+    segs = "segments/explore?#{params}"
+    |> Strava.request(client, as: %{segments: [%Strava.Segment.Summary{}] })
+    # |> Enum.map(&Strava.Segmentn=Explorer.parse/1)
+
+    %{segments: return_list} = segs
+    return_list
+    # %{segments: segs} = Strava.request(add, Strava.Client.new)
+    #  Enum.map(segs, fn (x) -> struct(Strava.SegmentExplorer, x) end)
+  end
+
+  def leaderboard(id, client \\ Strava.Client.new) do
+    "segments/#{id}/leaderboard"
+    |> Strava.request(client, as: %Strava.Segment.Leaderboard{})
+    |> parse_leaderboard
+    # |> Enum.map(&Strava.Segment.Leaderboard.parse_leaderboard/1)
+  end
+
+  def parse_leaderboard(%Strava.Segment.Leaderboard{} = segment) do
+    segment
+    |> parse_leaderboard_entries
+  end
+
+  def parse_leaderboard_entries(leaderboard)
+  def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: nil} = leaderboard), do: leaderboard
+  def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: entries} = leaderboard) do
+    %Strava.Segment.Leaderboard{leaderboard |
+      entries: Enum.map(entries, fn entry -> struct(Strava.Segment.LeaderboardEntry, entry) end ),
+    }
   end
 
   @doc """
