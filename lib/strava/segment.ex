@@ -104,6 +104,21 @@ defmodule Strava.Segment do
       :kom_type,
       :neighborhood_count,
     ]
+
+    def parse(%Strava.Segment.Leaderboard{} = segment) do
+      segment
+      |> parse_leaderboard_entries
+    end
+
+    def parse_leaderboard_entries(leaderboard)
+    def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: nil} = leaderboard), do: leaderboard
+    def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: entries} = leaderboard) do
+      %Strava.Segment.Leaderboard{leaderboard |
+        entries: Enum.map(entries, fn entry ->
+          Strava.Segment.LeaderboardEntry.parse(struct(Strava.Segment.LeaderboardEntry, entry))
+        end ),
+      }
+    end
   end
 
   defmodule LeaderboardEntry do
@@ -140,6 +155,19 @@ defmodule Strava.Segment do
       :rank,
       :athlete_profile,
     ]
+
+    def parse(%Strava.Segment.LeaderboardEntry{} = entry) do
+      entry
+      |> parse_dates
+    end
+
+
+    def parse_dates(%Strava.Segment.LeaderboardEntry{start_date: start_date, start_date_local: start_date_local} = entry) do
+      %Strava.Segment.LeaderboardEntry{entry |
+        start_date: parse_date(start_date),
+        start_date_local: parse_date(start_date_local)
+      }
+    end
   end
 
   @doc """
@@ -267,40 +295,55 @@ defmodule Strava.Segment do
   """
   @spec explorer(map, Strava.Client.t) :: list(Strava.Segment.Summary.t)
   def explorer(filters, client \\ Strava.Client.new) do
-    params = filters
-      |> Enum.filter(fn {_, v} -> v != nil end)
-      |> Enum.into(filters)
-      |> URI.encode_query
-
-    segs = "segments/explore?#{params}"
+    filters
+    |> Enum.filter(fn {_, v} -> v != nil end)
+    |> Enum.into(filters)
+    |> URI.encode_query
+    |> gen_explorer_query
     |> Strava.request(client, as: %{segments: [%Strava.Segment.Summary{}] })
+    |> Map.get(:segments)
     # |> Enum.map(&Strava.Segmentn=Explorer.parse/1)
 
-    %{segments: return_list} = segs
-    return_list
     # %{segments: segs} = Strava.request(add, Strava.Client.new)
     #  Enum.map(segs, fn (x) -> struct(Strava.SegmentExplorer, x) end)
   end
 
-  def leaderboard(id, client \\ Strava.Client.new) do
-    "segments/#{id}/leaderboard"
+  defp gen_explorer_query(params) do
+    "segments/explore?#{params}"
+  end
+
+  def leaderboard(id, filters \\ %{}, client \\ Strava.Client.new) do
+    filters
+    |> Enum.filter(fn {_, v} -> v != nil end)
+    |> Enum.into(filters)
+    |> URI.encode_query
+    |> gen_leaderboard_query(id)
     |> Strava.request(client, as: %Strava.Segment.Leaderboard{})
-    |> parse_leaderboard
+    |> Strava.Segment.Leaderboard.parse
     # |> Enum.map(&Strava.Segment.Leaderboard.parse_leaderboard/1)
   end
 
-  def parse_leaderboard(%Strava.Segment.Leaderboard{} = segment) do
-    segment
-    |> parse_leaderboard_entries
+  defp gen_leaderboard_query(params, id) do
+    "segments/#{id}/leaderboard?#{params}"
   end
 
-  def parse_leaderboard_entries(leaderboard)
-  def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: nil} = leaderboard), do: leaderboard
-  def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: entries} = leaderboard) do
-    %Strava.Segment.Leaderboard{leaderboard |
-      entries: Enum.map(entries, fn entry -> struct(Strava.Segment.LeaderboardEntry, entry) end ),
-    }
-  end
+
+  # def parse_leaderboard(%Strava.Segment.Leaderboard{} = segment) do
+  #   segment
+  #   |> parse_leaderboard_entries
+  # end
+  #
+  # def parse_leaderboard_entries(leaderboard)
+  # def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: nil} = leaderboard), do: leaderboard
+  # def parse_leaderboard_entries(%Strava.Segment.Leaderboard{entries: entries} = leaderboard) do
+  #   %Strava.Segment.Leaderboard{leaderboard |
+  #     entries: Enum.map(entries, fn entry ->
+  #       Strava.Segment.LeaderboardEntry.parse(struct(Strava.Segment.LeaderboardEntry, entry))
+  #     end ),
+  #   }
+  # end
+
+
 
   @doc """
   Parse the map and dates in the segment
