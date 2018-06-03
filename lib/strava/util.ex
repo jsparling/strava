@@ -57,4 +57,11 @@ defmodule Strava.Util do
     |> Enum.into(filters)
     |> URI.encode_query
   end
+
+  def query_string_no_pagination(filters) do
+    filters
+    |> Enum.filter(fn {_, v} -> v != nil end)
+    |> Enum.into(filters)
+    |> URI.encode_query
+  end
 end

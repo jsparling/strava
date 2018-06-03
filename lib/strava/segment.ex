@@ -289,23 +289,16 @@ defmodule Strava.Segment do
   Retrieve a list of Segment Summaries given gps bounds
 
   ## Example
-      Strava.Segment.explorer(%{bounds: "37.821362,-122.505373,38.842038,-121.46597", activity_type: "running"}))
+      Strava.Segment.explorer(%{bounds: "37.821362,-122.505373,38.842038,-121.46597", activity_type: "running"})
 
   More info: https://strava.github.io/api/v3/segments/#explore
   """
   @spec explorer(map, Strava.Client.t) :: list(Strava.Segment.Summary.t)
   def explorer(filters, client \\ Strava.Client.new) do
-    filters
-    |> Enum.filter(fn {_, v} -> v != nil end)
-    |> Enum.into(filters)
-    |> URI.encode_query
+    Strava.Util.query_string_no_pagination(filters)
     |> gen_explorer_query
     |> Strava.request(client, as: %{segments: [%Strava.Segment.Summary{}] })
     |> Map.get(:segments)
-    # |> Enum.map(&Strava.Segmentn=Explorer.parse/1)
-
-    # %{segments: segs} = Strava.request(add, Strava.Client.new)
-    #  Enum.map(segs, fn (x) -> struct(Strava.SegmentExplorer, x) end)
   end
 
   defp gen_explorer_query(params) do

@@ -18,7 +18,7 @@ defmodule Strava do
   """
   def request(path, %Strava.Client{access_token: access_token}, opts \\ []) do
     path
-    |> Strava.get!(%{"Authorization" => "Bearer #{access_token}"})
+    |> Strava.get!(%{"Authorization" => "Bearer #{access_token}"}, [ ssl: [{:versions, [:'tlsv1.2']}] ])
     |> parse(opts)
   end
 

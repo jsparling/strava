@@ -147,8 +147,8 @@ defmodule Strava.Activity do
   More info: https://strava.github.io/api/v3/activities/#get-details
   """
   @spec retrieve(integer) :: Strava.Activity.t
-  def retrieve(id, client \\ Strava.Client.new) do
-    "activities/#{id}"
+  def retrieve(id, filters \\ %{}, client \\ Strava.Client.new) do
+    "activities/#{id}?#{Strava.Util.query_string_no_pagination(filters)}"
     |> Strava.request(client, as: %Strava.Activity{})
     |> parse
   end
